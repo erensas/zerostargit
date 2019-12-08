@@ -30,9 +30,9 @@
 #define MAX7219_MODE_TEST         0x0F00
 #define MAX7219_MODE_NOOP         0x0000
 
-#define __SPI_CS_ENABLE__() do {    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);   } while(0)
-#define __SPI_CS_DISABLE__() do {   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);     } while(0)
-   __HAL_AFIO_REMAP_SPI2_DISABLE(); // No remap (NSS/PA4, SCK/PA5, MISO/PA6, MOSI/PA7)
+//#define __SPI_CS_ENABLE__() do {    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);   } while(0)
+//#define __SPI_CS_DISABLE__() do {   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);     } while(0)
+//   __HAL_AFIO_REMAP_SPI2_DISABLE(); // No remap (NSS/PA4, SCK/PA5, MISO/PA6, MOSI/PA7)
 
 /* USER CODE END Includes */
 
@@ -68,6 +68,7 @@ static void MX_SPI2_Init(void);
 void SPI_Transmit(SPI_HandleTypeDef *hspi, uint16_t data) {
     // 2nd parameter - pData: pointer to data buffer
     HAL_SPI_Transmit(hspi, (uint8_t *) &data, 1, 1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 }
 
 /* USER CODE END PFP */
@@ -108,28 +109,18 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
-  MX_SPI2_Init();
-  __HAL_SPI_ENABLE(&hspi2);
+// __HAL_SPI_ENABLE(&hspi2);
 
       // CS inactive
-      __SPI_CS_DISABLE__();
 
       // Init MAX7219
-      __SPI_CS_ENABLE__();
-      SPI_Transmit(&hspi2, MAX7219_MODE_SCAN_LIMIT | 7);
-      __SPI_CS_DISABLE__();
+         SPI_Transmit(&hspi2, MAX7219_MODE_SCAN_LIMIT | 0x7);
 
-      __SPI_CS_ENABLE__();
-      SPI_Transmit(&hspi2, MAX7219_MODE_INTENSITY | 0xF);
-      __SPI_CS_DISABLE__();
+      SPI_Transmit(&hspi2, MAX7219_MODE_INTENSITY | 0xF0);
 
-      __SPI_CS_ENABLE__();
-      SPI_Transmit(&hspi2, MAX7219_MODE_POWER | 0x1);
-      __SPI_CS_DISABLE__();
+      SPI_Transmit(&hspi2, MAX7219_MODE_POWER | 0x11);
 
-      __SPI_CS_ENABLE__();
-      SPI_Transmit(&hspi2, MAX7219_MODE_DECODE | 0);
-      __SPI_CS_DISABLE__();
+      SPI_Transmit(&hspi2, MAX7219_MODE_DECODE | 0x01);
 
   /* USER CODE BEGIN 2 */
 
@@ -149,9 +140,8 @@ int main(void)
 
   for (col = 0x100; col <= 0x800; col += 0x100) {
       for (bit = 7; bit >= 0; bit--) {
-          __SPI_CS_ENABLE__();
+
           SPI_Transmit(&hspi2, col | (1 << bit & 0xFF));
-          __SPI_CS_DISABLE__();
           HAL_Delay(30);
       }
   }
@@ -168,11 +158,11 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage 
+  /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -188,7 +178,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -225,12 +215,12 @@ static void MX_SPI2_Init(void)
   hspi2.Init.DataSize = SPI_DATASIZE_16BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.NSS = SPI_NSS_HARD_OUTPUT;
   hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial = 10;
+  hspi2.Init.CRCPolynomial = 7;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
@@ -305,6 +295,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+//  GPIO_InitStruct.Pin = CS_Pin;
+//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+//  GPIO_InitStruct.Pull = GPIO_NOPULL;
+//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+//  HAL_GPIO_Init(CS_GPIO_Port, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 4 */
